@@ -1,11 +1,6 @@
 #! python3
-#
-# Docs used to create
-# https://smallbusiness.chron.com/sending-things-printer-python-58655.html
-# http://timgolden.me.uk/pywin32-docs/win32print.html
-
-import os
 import sys
+
 import win32print
 
 
