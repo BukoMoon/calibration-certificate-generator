@@ -1,24 +1,16 @@
 #! python3
 import sys
-
+import win32api
 import win32print
 
 
 class GeneratorPrinter(object):
 
     def __init__(self, filename):
-        if sys.platform == 'win32':
-            self.printer = win32print.OpenPrinter('Microsoft Print to PDF')
-            self.print_docx(filename)
-        elif sys.platform == 'win64':
-            self.printer = win32print.OpenPrinter('Microsoft Print to PDF')
-            self.print_docx(filename)
-        else:
-            pass
+        self.filename = filename
 
-    def print_docx(self, filename):
-        job = win32print.StartDocPrinter(self.printer, 1, (filename, None, None))
-        print(job)
+    def print_docx(self):
+        win32api.ShellExecute(0, "print", self.filename, '/d:"%s"' % win32print.GetDefaultPrinter(), ".", 0)
 
 
 if __name__ == '__main__':
