@@ -2,17 +2,21 @@
 import datetime
 import sys
 import docx
-import win32api
-import win32print
+import os
 
-
+from win32 import win32api, win32print
 from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ROW_HEIGHT_RULE
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.shared import Cm, Pt
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QApplication, QMainWindow
-from os import path
+
+
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
 
 class Template(object):
@@ -23,8 +27,7 @@ class Template(object):
         :param file_name: The name of the file you wish to save the docx as
         """
         # Initialising the path for where the document will be saved
-        dir_path = path.dirname(__file__)
-        self.save_location = path.join(dir_path, file_name)
+        self.save_location = resource_path(file_name)
         self._model = ''
         self._date = ''
         self._prefix = ''
@@ -203,7 +206,7 @@ class CalibrationCertificate(Template):
 
     def __init__(self, file_name):
         super().__init__(file_name)
-        self.img = 'HLP-Logo-Aus.png'
+        self.img = resource_path('HLP-Logo-Aus.png')
 
     def create_docx(self):
         doc = docx.Document()
@@ -219,9 +222,9 @@ class CalibrationCertificate(Template):
         paragraph_text = 'Model:\t' + self.model + \
                          '\r SN: ' + self.prefix + str(self.serial_number).zfill(6) + '\rRead ' + self.check + \
                          '°C @ ' + self.temp + ' °C\r\rChecked against NATA calibrated unit AZ8801\r S/N - 9000782' \
-                                               'Calibration Report: 41598-4\r\r\rThe above unit meets the stated specifications ' \
-                                               'as set out in the Manufacturers specification sheet included with the unit & meets ' \
-                                               'the Australian Food Standards requirements.\r\r\rSigned\t' + self.name + \
+                         'Calibration Report: 41598-4\r\r\rThe above unit meets the stated specifications ' \
+                         'as set out in the Manufacturers specification sheet included with the unit & meets ' \
+                         'the Australian Food Standards requirements.\r\r\rSigned\t' + self.name + \
                          '\t\t\tDate Issued: ' + self.date
         heading_run, valid_run, text_run = self.paragraph_runs(doc, heading_text, valid_text,
                                                                paragraph_text, font='Times New Roman')
@@ -236,7 +239,7 @@ class SingleConformance(Template):
 
     def __init__(self, file_name):
         super().__init__(file_name)
-        self.img = 'HLP-Logo-Aus.png'
+        self.img = resource_path('HLP-Logo-Aus.png')
 
     def create_docx(self):
         doc = docx.Document()
@@ -280,7 +283,7 @@ class MultipleConformance(Template):
         return table
 
     def table_contents(self, table, rows):
-        img = 'HLP-Logo-Aus.png'
+        img = resource_path('HLP-Logo-Aus.png')
 
         # Text to be displayed in a conformance certificate
         heading_text = '\rMODEL: ' + self.model + '\r\rCONFORMANCE CERTIFICATE'
@@ -288,7 +291,7 @@ class MultipleConformance(Template):
         for i in range(0, rows):
             for cell in range(0, rows):
                 paragraph_text = '\rSerial Number:  ' + self.prefix + str(self.serial_number).zfill(6) + '\r\rThis ' \
-                                                                                                         'unit has had an operational and calibration\rcheck on  ' + self.date + \
+                                 'unit has had an operational and calibration\rcheck on  ' + self.date + \
                                  '\r\r& meets the specifications as set out in the Manufacturers specification sheet ' \
                                  'included with the unit & meets the Australian Food Standards requirements\r\rThis ' \
                                  'certificate is valid for ' + self.months + ' months from the above date.\r' + \
@@ -543,7 +546,7 @@ class MyWindow(QMainWindow):
         # Logo Image
         self.label_6.setGeometry(QtCore.QRect(40, 10, 801, 151))
         self.label_6.setText("")
-        self.label_6.setPixmap(QtGui.QPixmap("HLP-Logo-Aus.jpg"))
+        self.label_6.setPixmap(QtGui.QPixmap(resource_path("HLP-Logo-Aus.jpg")))
         self.label_6.setScaledContents(True)
         self.label_6.setObjectName("label_6")
 
@@ -636,9 +639,9 @@ class MyWindow(QMainWindow):
     def printer(file, multiple_files: bool):
         if multiple_files:
             for file_number in range(0, 7):
-                print(f'{file_number + 1}. Printing docx, {file}')
+                GeneratorPrinter('generated' + str(file_number) + '.docx').print_docx()
         else:
-            print(f'Printing docx, {file}')
+            GeneratorPrinter(file).print_docx()
 
     @property
     def print_files(self):
