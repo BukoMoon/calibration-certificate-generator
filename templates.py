@@ -1,23 +1,30 @@
-#! python3
-
-from os import path
-
+import datetime
+import sys
 import docx
+import os
+
+from win32 import win32api, win32print
 from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ROW_HEIGHT_RULE
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.shared import Cm, Pt
+from typing import List
+
+
+def resource_path(relative_path: str) -> str:
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
 
 class Template(object):
 
-    def __init__(self, file_name):
+    def __init__(self, file_name: str):
         """
 
         :param file_name: The name of the file you wish to save the docx as
         """
         # Initialising the path for where the document will be saved
-        dir_path = path.dirname(__file__)
-        self.save_location = path.join(dir_path, file_name)
+        self.save_location = resource_path(file_name)
         self._model = ''
         self._date = ''
         self._prefix = ''
@@ -32,7 +39,7 @@ class Template(object):
 
         doc.save(self.save_location)
 
-    def create_table(self, doc, rows=0, cols=0):
+    def create_table(self, doc: docx.Document, rows: int = 0, cols: int = 0) -> docx:
         """
 
         :param doc: Document to create the table on
@@ -49,7 +56,7 @@ class Template(object):
         return table
 
     @staticmethod
-    def margin_size(doc, size):
+    def margin_size(doc: docx.Document, size: int) -> None:
         """
 
         :param doc: The document you wish to change the margins for
@@ -64,7 +71,7 @@ class Template(object):
             section.right_margin = Cm(size)
 
     @staticmethod
-    def paragraph_runs(doc, *args: object, font: object = 'Calibri') -> object:
+    def paragraph_runs(doc: docx.Document, *args: str, font: str = 'Calibri') -> List:
         """
 
         :param doc: A document or a table to add each paragraph/run to
@@ -82,7 +89,7 @@ class Template(object):
         return list_of_runs
 
     @staticmethod
-    def center_all_paragraphs(doc):
+    def center_all_paragraphs(doc: docx.Document) -> None:
         """
 
         :param doc: The document or a table you want the paragraphs centered for
@@ -92,7 +99,7 @@ class Template(object):
             paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
     @staticmethod
-    def font_size(*paragraphs, size=12):
+    def font_size(*paragraphs: docx.text.paragraph, size: int = 12) -> None:
         """
 
         :param paragraphs: The paragraphs you want to change the size of
@@ -103,7 +110,7 @@ class Template(object):
             paragraph.font.size = Pt(size)
 
     @staticmethod
-    def bold(*args):
+    def bold(*args: docx.text) -> None:
         """
 
         :param args: Any paragraph run that you want to make bold.
@@ -113,7 +120,7 @@ class Template(object):
             arg.bold = True
 
     @staticmethod
-    def underline(*args):
+    def underline(*args: docx.text) -> None:
         """
 
         :param args: Any paragraph run that you want to have an underline.
@@ -167,7 +174,7 @@ class Template(object):
         return self._prefix
 
     @prefix.setter
-    def prefix(self, value=''):
+    def prefix(self, value: str = ''):
         if self.model.lower() == 'pocket temp pro':
             self._prefix = 'HLP-PTP'
         elif self.model.lower() == 'pocket temp blue':
@@ -194,9 +201,17 @@ class Template(object):
 
 class CalibrationCertificate(Template):
 
-    def __init__(self, file_name):
-        super().__init__(file_name)
-        self.img = 'HLP-Logo-Aus.png'
+    def __init__(self, file: str, model: str, date: str, name: str, months: str, sn: str, check: float, temp: float):
+        super().__init__(file)
+        self.img = resource_path('HLP-Logo-Aus.png')
+        self.model = model
+        self.date = date
+        self.name = name
+        self.months = months
+        self.serial_number = sn
+        self.check = check
+        self.temp = temp
+        self.create_docx()
 
     def create_docx(self):
         doc = docx.Document()
@@ -204,7 +219,7 @@ class CalibrationCertificate(Template):
         self.docx_contents(doc)
         doc.save(self.save_location)
 
-    def docx_contents(self, doc):
+    def docx_contents(self, doc: docx.Document) -> None:
         doc.add_picture(self.img, width=Cm(17.2), height=Cm(3.95))
         # Text to be displayed in a calibration certificate
         heading_text = 'Calibration Certificate'
@@ -227,17 +242,23 @@ class CalibrationCertificate(Template):
 
 class SingleConformance(Template):
 
-    def __init__(self, file_name):
-        super().__init__(file_name)
-        self.img = 'HLP-Logo-Aus.png'
+    def __init__(self, file: str, model: str, date: str, name: str, months: str, sn: str):
+        super().__init__(file)
+        self.img = resource_path('HLP-Logo-Aus.png')
+        self.model = model
+        self.date = date
+        self.name = name
+        self.months = months
+        self.serial_number = sn
+        self.create_docx()
 
-    def create_docx(self):
+    def create_docx(self) -> None:
         doc = docx.Document()
         super().margin_size(doc, 2)
         self.docx_contents(doc)
         doc.save(self.save_location)
 
-    def docx_contents(self, doc):
+    def docx_contents(self, doc: docx.Document) -> None:
         doc.add_picture(self.img, width=Cm(17.3), height=Cm(3.95))
         # Text to be displayed for the single conformance certificate
         compliance_heading = '\rCertificate of Compliance\rModel:  ' + self.model
@@ -257,29 +278,36 @@ class SingleConformance(Template):
 
 class MultipleConformance(Template):
 
-    def __init__(self, file_name):
-        super().__init__(file_name)
+    def __init__(self, file: str, date: str, name: str, months: str, sn: str):
+        super().__init__(file)
+        self.date = date
+        self.name = name
+        self.months = months
+        self.serial_number = sn
+        self.create_docx()
 
-    def create_docx(self):
+    def create_docx(self) -> None:
         doc = docx.Document()
         super().margin_size(doc, 1)
         self.create_table(doc, rows=2, cols=2)
 
         doc.save(self.save_location)
 
-    def create_table(self, doc, rows=0, cols=0):
+    def create_table(self, doc: docx.Document, rows: int = 0, cols: int = 0):
         table = super().create_table(doc, rows=rows, cols=cols)
         self.table_contents(table, rows)
         return table
 
-    def table_contents(self, table, rows):
-        img = 'HLP-Logo-Aus.png'
+    def table_contents(self, table: docx, rows: int) -> None:
+        img = resource_path('HLP-Logo-Aus.png')
 
         # Text to be displayed in a conformance certificate
         heading_text = '\rMODEL: ' + self.model + '\r\rCONFORMANCE CERTIFICATE'
 
         for i in range(0, rows):
+
             for cell in range(0, rows):
+
                 paragraph_text = '\rSerial Number:  ' + self.prefix + str(self.serial_number).zfill(6) + '\r\rThis ' \
                                  'unit has had an operational and calibration\rcheck on  ' + self.date + \
                                  '\r\r& meets the specifications as set out in the Manufacturers specification sheet ' \
@@ -304,34 +332,11 @@ class MultipleConformance(Template):
                 self.serial_number = self.serial_number + 1
 
 
-if __name__ == '__main__':
-    # Date - Serial Number - Model - Months - Name - File Name
-    multiple = MultipleConformance('generated.docx')
-    multiple.model = 'Pocket Temp Pro'
-    multiple.date = '3/9/20'
-    multiple.name = 'L.Adams'
-    multiple.months = '12'
-    multiple.serial_number = 5457
-    multiple.prefix = ''
-    multiple.create_docx()
+class GeneratorPrinter(object):
 
-    calibration = CalibrationCertificate('generated-calibration.docx')
-    calibration.model = 'Pocket Temp Pro'
-    calibration.date = '3/9/20'
-    calibration.name = 'L.Adams'
-    calibration.months = '12'
-    calibration.serial_number = 5457
-    calibration.prefix = ''
-    calibration.check = 24.2
-    calibration.temp = 24.1
-    calibration.create_docx()
+    def __init__(self, filename: str):
+        self.filename = filename
+        self.print_docx()
 
-    single = SingleConformance('generated-conformance-single.docx')
-    single.model = 'Pocket Temp Pro'
-    single.date = '3/9/20'
-    single.name = 'L.Adams'
-    single.months = '12'
-    single.serial_number = 5457
-    single.prefix = ''
-    single.create_docx()
-
+    def print_docx(self) -> None:
+        win32api.ShellExecute(0, "print", self.filename, '/d:"%s"' % win32print.GetDefaultPrinter(), ".", 0)

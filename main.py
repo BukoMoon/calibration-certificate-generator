@@ -1,326 +1,8 @@
 #! python3
-import datetime
-import sys
-import docx
-import os
-
-from win32 import win32api, win32print
-from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ROW_HEIGHT_RULE
-from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
-from docx.shared import Cm, Pt
 from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtWidgets import QApplication, QMainWindow
-
-
-def resource_path(relative_path):
-    if hasattr(sys, '_MEIPASS'):
-        return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.abspath("."), relative_path)
-
-
-class Template(object):
-
-    def __init__(self, file_name):
-        """
-
-        :param file_name: The name of the file you wish to save the docx as
-        """
-        # Initialising the path for where the document will be saved
-        self.save_location = resource_path(file_name)
-        self._model = ''
-        self._date = ''
-        self._prefix = ''
-        self._name = ''
-        self._months = ''
-        self.check = ''
-        self.temp = ''
-        self._serial_number = None
-
-    def create_docx(self):
-        doc = docx.Document()
-
-        doc.save(self.save_location)
-
-    def create_table(self, doc, rows=0, cols=0):
-        """
-
-        :param doc: Document to create the table on
-        :param rows: How many rows across the table has
-        :param cols: How many columns down the table has
-        :return: returns the table it creates
-        """
-        table = doc.add_table(rows, cols)
-        table.cell(0, 0).width = Cm(9)
-        table.alignment = WD_TABLE_ALIGNMENT.LEFT
-        table.style = 'TableGrid'
-        table.autofit = False
-        table.width = Cm(9)
-        return table
-
-    @staticmethod
-    def margin_size(doc, size):
-        """
-
-        :param doc: The document you wish to change the margins for
-        :param size: int - size of the margin in centimetres
-        :return: None
-        """
-        sections = doc.sections
-        for section in sections:
-            section.top_margin = Cm(size)
-            section.bottom_margin = Cm(size)
-            section.left_margin = Cm(size)
-            section.right_margin = Cm(size)
-
-    @staticmethod
-    def paragraph_runs(doc, *args: object, font: object = 'Calibri') -> object:
-        """
-
-        :param doc: A document or a table to add each paragraph/run to
-        :param args: Any text that you wish to be displayed in the document or table
-        :param font: The name of the font you wish to use for each paragraph
-        :return: List of each run that was made to edit further if need be. e.g font size
-        """
-        list_of_runs = []
-        for arg in args:
-            paragraph = doc.add_paragraph()
-            run = paragraph.add_run(arg)
-            run.font.name = font
-            list_of_runs.append(run)
-
-        return list_of_runs
-
-    @staticmethod
-    def center_all_paragraphs(doc):
-        """
-
-        :param doc: The document or a table you want the paragraphs centered for
-        :return: None
-        """
-        for paragraph in doc.paragraphs:
-            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-
-    @staticmethod
-    def font_size(*paragraphs, size=12):
-        """
-
-        :param paragraphs: The paragraphs you want to change the size of
-        :param size: The size of the font in points
-        :return: None
-        """
-        for paragraph in paragraphs:
-            paragraph.font.size = Pt(size)
-
-    @staticmethod
-    def bold(*args):
-        """
-
-        :param args: Any paragraph run that you want to make bold.
-        :return: None
-        """
-        for arg in args:
-            arg.bold = True
-
-    @staticmethod
-    def underline(*args):
-        """
-
-        :param args: Any paragraph run that you want to have an underline.
-        :return: None
-        """
-        for arg in args:
-            arg.underline = True
-
-    @property
-    def model(self) -> str:
-        return self._model
-
-    @model.setter
-    def model(self, device_model: str):
-        self._model = device_model
-
-    @property
-    def date(self) -> str:
-        return self._date
-
-    @date.setter
-    def date(self, set_date: str):
-        self._date = set_date
-
-    @property
-    def serial_number(self) -> int:
-        return self._serial_number
-
-    @serial_number.setter
-    def serial_number(self, device_serial_number: str):
-        self._serial_number = int(device_serial_number)
-
-    @property
-    def months(self) -> str:
-        return self._months
-
-    @months.setter
-    def months(self, valid_time: str):
-        self._months = valid_time
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @name.setter
-    def name(self, set_name: str):
-        self._name = set_name
-
-    @property
-    def prefix(self) -> str:
-        return self._prefix
-
-    @prefix.setter
-    def prefix(self, value=''):
-        if self.model.lower() == 'pocket temp pro':
-            self._prefix = 'HLP-PTP'
-        elif self.model.lower() == 'pocket temp blue':
-            self._prefix = 'HLP-PTPB'
-        else:
-            self._prefix = value
-
-    @property
-    def check(self) -> str:
-        return str(self._check)
-
-    @check.setter
-    def check(self, temperature_value: float):
-        self._check = temperature_value
-
-    @property
-    def temp(self) -> str:
-        return str(self._temp)
-
-    @temp.setter
-    def temp(self, temp_value: float):
-        self._temp = temp_value
-
-
-class CalibrationCertificate(Template):
-
-    def __init__(self, file_name):
-        super().__init__(file_name)
-        self.img = resource_path('HLP-Logo-Aus.png')
-
-    def create_docx(self):
-        doc = docx.Document()
-        super().margin_size(doc, 2)
-        self.docx_contents(doc)
-        doc.save(self.save_location)
-
-    def docx_contents(self, doc):
-        doc.add_picture(self.img, width=Cm(17.2), height=Cm(3.95))
-        # Text to be displayed in a calibration certificate
-        heading_text = 'Calibration Certificate'
-        valid_text = '(This Certificate valid for ' + self.months + ' Months)\r'
-        paragraph_text = 'Model:\t' + self.model + \
-                         '\r SN: ' + self.prefix + str(self.serial_number).zfill(6) + '\rRead ' + self.check + \
-                         '°C @ ' + self.temp + ' °C\r\rChecked against NATA calibrated unit AZ8801\r S/N - 9000782' \
-                         'Calibration Report: 41598-4\r\r\rThe above unit meets the stated specifications ' \
-                         'as set out in the Manufacturers specification sheet included with the unit & meets ' \
-                         'the Australian Food Standards requirements.\r\r\rSigned\t' + self.name + \
-                         '\t\t\tDate Issued: ' + self.date
-        heading_run, valid_run, text_run = self.paragraph_runs(doc, heading_text, valid_text,
-                                                               paragraph_text, font='Times New Roman')
-        self.center_all_paragraphs(doc)
-
-        self.font_size(heading_run, size=28)
-        self.font_size(valid_run, size=10)
-        self.font_size(text_run, size=22)
-
-
-class SingleConformance(Template):
-
-    def __init__(self, file_name):
-        super().__init__(file_name)
-        self.img = resource_path('HLP-Logo-Aus.png')
-
-    def create_docx(self):
-        doc = docx.Document()
-        super().margin_size(doc, 2)
-        self.docx_contents(doc)
-        doc.save(self.save_location)
-
-    def docx_contents(self, doc):
-        doc.add_picture(self.img, width=Cm(17.3), height=Cm(3.95))
-        # Text to be displayed for the single conformance certificate
-        compliance_heading = '\rCertificate of Compliance\rModel:  ' + self.model
-        valid_text = '(This Certificate valid for ' + self.months + ' Months)\r\r'
-        compliance_text = '\rThe above unit meets the stated specifications as set out in the Manufacturers ' \
-                          'specification sheet included with the unit & meets the Australian Food Standards ' \
-                          'requirements.\r\r\r\r\r' + 'Signed\t\t' + self.name + '\t\t\t\tDate Issued: ' + self.date
-        heading_run, valid_run, text_run = self.paragraph_runs(doc, compliance_heading, valid_text,
-                                                               compliance_text, font='Times New Roman')
-        self.center_all_paragraphs(doc)
-
-        # Font sizes for each paragraph
-        self.font_size(valid_run, size=10)
-        self.font_size(heading_run, size=28)
-        self.font_size(text_run, size=22)
-
-
-class MultipleConformance(Template):
-
-    def __init__(self, file_name):
-        super().__init__(file_name)
-
-    def create_docx(self):
-        doc = docx.Document()
-        super().margin_size(doc, 1)
-        self.create_table(doc, rows=2, cols=2)
-
-        doc.save(self.save_location)
-
-    def create_table(self, doc, rows=0, cols=0):
-        table = super().create_table(doc, rows=rows, cols=cols)
-        self.table_contents(table, rows)
-        return table
-
-    def table_contents(self, table, rows):
-        img = resource_path('HLP-Logo-Aus.png')
-
-        # Text to be displayed in a conformance certificate
-        heading_text = '\rMODEL: ' + self.model + '\r\rCONFORMANCE CERTIFICATE'
-
-        for i in range(0, rows):
-            for cell in range(0, rows):
-                paragraph_text = '\rSerial Number:  ' + self.prefix + str(self.serial_number).zfill(6) + '\r\rThis ' \
-                                 'unit has had an operational and calibration\rcheck on  ' + self.date + \
-                                 '\r\r& meets the specifications as set out in the Manufacturers specification sheet ' \
-                                 'included with the unit & meets the Australian Food Standards requirements\r\rThis ' \
-                                 'certificate is valid for ' + self.months + ' months from the above date.\r' + \
-                                 '\rSigned\t\t' + self.name + '\r'
-                table_rows = table.rows[i].cells[cell]
-                p = table_rows.add_paragraph()
-                p.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-                p.height = Cm(11)
-                table.rows[i].height = Cm(9)
-
-                # Adding image
-                p.add_run().add_picture(img, width=Cm(9.09), height=Cm(2.41))
-                # Adding runs to the paragraph
-                heading, para = self.paragraph_runs(table_rows, str(heading_text), str(paragraph_text), font='Arial')
-                self.center_all_paragraphs(table_rows)
-                self.bold(heading)
-                self.underline(heading)
-                self.font_size(heading, size=14)
-                self.font_size(para, size=12)
-                self.serial_number = self.serial_number + 1
-
-
-class GeneratorPrinter(object):
-
-    def __init__(self, filename):
-        self.filename = filename
-
-    def print_docx(self):
-        win32api.ShellExecute(0, "print", self.filename, '/d:"%s"' % win32print.GetDefaultPrinter(), ".", 0)
+from PyQt5.QtCore import pyqtSlot, QDate
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, qApp
+from templates import *
 
 
 class MyWindow(QMainWindow):
@@ -329,6 +11,7 @@ class MyWindow(QMainWindow):
         super(MyWindow, self).__init__()
         self.setGeometry(200, 200, 800, 600)
         self.setWindowTitle('HLP Controls Pty Ltd - Certificate Generator - By Louis Adams')
+        self.setWindowIcon(QtGui.QIcon('favicon.ico'))
         _translate = QtCore.QCoreApplication.translate
 
         self._print = None
@@ -419,7 +102,7 @@ class MyWindow(QMainWindow):
         self.certificate.addButton(self.check_box_2)
         self.certificate.addButton(self.check_box)
         self.certificate.addButton(self.check_box_5)
-        self.check_box.isChecked = True
+        self.check_box.setChecked(True)
 
         # Setting name & text
         self.check_box.setObjectName("check_box")
@@ -433,7 +116,7 @@ class MyWindow(QMainWindow):
         # Adding checkboxes to a group
         self.months.addButton(self.check_box_3)
         self.months.addButton(self.check_box_4)
-        self.check_box_3.isChecked = True
+        self.check_box_3.setChecked(True)
 
         # Setting name & text
         self.check_box_3.setText(_translate("MainWindow", "12 Months"))
@@ -502,7 +185,7 @@ class MyWindow(QMainWindow):
         # LineEdit Widgets & Date locations
         self.date_edit.setGeometry(QtCore.QRect(124, 534, 111, 31))
         self.date_edit.setCalendarPopup(True)
-        self.date_edit.setDate(QtCore.QDate(2020, 9, 12))
+        self.date_edit.setDate(QDate.currentDate())
         self.text_edit.setGeometry(QtCore.QRect(500, 420, 321, 31))
         self.text_edit_2.setGeometry(QtCore.QRect(500, 319, 321, 31))
         self.text_edit_3.setGeometry(QtCore.QRect(500, 230, 321, 31))
@@ -555,20 +238,67 @@ class MyWindow(QMainWindow):
             self.print_files = True
         self.button1_2.clicked.connect(self.generate)
         QtCore.QMetaObject.connectSlotsByName(self)
+        self.check_box.stateChanged.connect(self.state_change)
         self.check_box_2.stateChanged.connect(self.state_change)
+        self.check_box_5.stateChanged.connect(self.state_change)
+        self.action_exit.triggered.connect(qApp.quit)
         self.show()
+        self.temperature.hide()
+        self.checked.hide()
+        self.label_temp.hide()
+        self.label_checked_at.hide()
 
     def state_change(self):
+        # Calibration certificates
         if self.check_box_2.isChecked():
+            self.show()
+            self.label_5.setText('Device Model')
+            self.check_box_3.setChecked(True)
             self.temperature.show()
             self.checked.show()
             self.label_temp.show()
             self.label_checked_at.show()
-        else:
+            self.label_2.show()
+            self.text_edit.show()
+
+        # Single conformance certificates
+        elif self.check_box.isChecked():
+            self.show()
+            self.label_5.setText('Device Model')
             self.temperature.hide()
             self.checked.hide()
             self.label_temp.hide()
             self.label_checked_at.hide()
+            self.label_2.hide()
+            self.text_edit.hide()
+
+        # Multiple conformance certificates
+        elif self.check_box_5.isChecked():
+            self.show()
+            self.label_5.setText('Pocket Temp Model')
+            self.temperature.hide()
+            self.checked.hide()
+            self.label_temp.hide()
+            self.label_checked_at.hide()
+            self.label_2.show()
+            self.text_edit.show()
+
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_Control + QtCore.Qt.Key_E:
+            self.close()
+
+    def closeEvent(self, event):
+        close = QMessageBox()
+        close.setWindowTitle('Confirm')
+        close.setWindowIcon(QtGui.QIcon('favicon.ico'))
+        close.setText("You sure you want to quit?")
+        close.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        close = close.exec()
+
+        if close == QMessageBox.Yes:
+            event.accept()
+        else:
+            event.ignore()
 
     @pyqtSlot()
     def generate(self):
@@ -591,64 +321,42 @@ class MyWindow(QMainWindow):
             set_months = ' 24 '
 
         if self.check_box.isChecked:
-            single_conformance = SingleConformance(file_name)
-            single_conformance.model = set_model
-            single_conformance.date = set_date
-            single_conformance.name = set_name
-            single_conformance.months = set_months
-            single_conformance.serial_number = set_serial_number
-            single_conformance.prefix = ''
-            single_conformance.create_docx()
+            SingleConformance(file_name, set_model, set_date, set_name, set_months, set_serial_number)
             if self.print_files:
                 self.printer(file_name, False)
 
         elif self.check_box_2.isChecked:
-            calibration_certificate = CalibrationCertificate(file_name)
-            calibration_certificate.model = set_model
-            calibration_certificate.date = set_date
-            calibration_certificate.name = set_name
-            calibration_certificate.months = set_months
-            calibration_certificate.serial_number = set_serial_number
-            calibration_certificate.prefix = ''
-            calibration_certificate.check = set_checked_at
-            calibration_certificate.temp = set_temperature
-            calibration_certificate.create_docx()
+            CalibrationCertificate(file_name, set_model, set_date, set_name, set_months,
+                                   set_serial_number, float(set_checked_at), float(set_temperature))
             if self.print_files:
                 self.printer(file_name, False)
 
         else:
-            self.generate_multiple(set_date, set_serial_number, set_model, set_months, set_name)
+            self.generate_multiple(set_date, set_serial_number, set_months, set_name)
 
-    def generate_multiple(self, set_date, set_serial_number, set_model, set_months, set_name):
+    def generate_multiple(self, date: str, serial_number: str, months: str, name: str) -> None:
         print_multiple = True
         for i in range(0, 7):
             print(f'Generating docx {i}')
-            multiple_conformance = MultipleConformance('generated' + str(i) + '.docx')
-            multiple_conformance.model = set_model
-            multiple_conformance.date = set_date
-            multiple_conformance.name = set_name
-            multiple_conformance.months = set_months
-            multiple_conformance.serial_number = set_serial_number
-            multiple_conformance.prefix = ''
-            multiple_conformance.create_docx()
-            set_serial_number += 4
+            MultipleConformance('generated' + str(i) + '.docx', date, name, months, serial_number)
+            serial_number += 4
             if print_multiple and self.print_files:
                 self.printer('generated' + str(i) + '.docx', True)
 
     @staticmethod
-    def printer(file, multiple_files: bool):
+    def printer(file: str, multiple_files: bool) -> None:
         if multiple_files:
             for file_number in range(0, 7):
-                GeneratorPrinter('generated' + str(file_number) + '.docx').print_docx()
+                GeneratorPrinter('generated' + str(file_number) + '.docx')
         else:
-            GeneratorPrinter(file).print_docx()
+            GeneratorPrinter(file)
 
     @property
-    def print_files(self):
+    def print_files(self) -> bool:
         return self._print
 
     @print_files.setter
-    def print_files(self, print_docx=False):
+    def print_files(self, print_docx: bool = False):
         self._print = print_docx
 
 
